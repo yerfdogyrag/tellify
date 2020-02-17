@@ -1,16 +1,32 @@
 from tellify.tellify import EventHandler, ConfigBuilder
 
+global Plug1_events
+# Key=plug name, value=[list of events matched]
+Plug1_events = dict()
 
 class Plug1(EventHandler):
     last_event: dict
 
-    def __init__(self, *args, **kwargs):
-        self.last_event = None
-        super().__init__(self, *args, **kwargs)
-
     def event_handler(self, tellify, event: dict):
+        # Check to make sure that everything matches what we expect
+        # If there's a ',' in the config value, we match on any of them
+        name = self.config['Project']
+        for k, v in self.config.items():
+            if k.startswith('tellify_'):
+                continue
+            if k not in event:
+                return False
+            ev_val = event[k]
+            if ',' in v:
+                if ev_val not in v.split(','):
+                    return False
+            else:
+                if ev_val != v:
+                    return False
+
+        Plug1_events.setdefault(name, []).append(event)
         assert tellify
-        self.last_event = event
+        return True
 
     def title(self):
         assert self
@@ -22,7 +38,7 @@ class Plug1(EventHandler):
 
     def required_fields(self):
         assert self
-        return set("Name Block".split())
+        return set("User Block".split())
 
     def match_fields(self):
         project = self.config["Project"]
@@ -30,9 +46,9 @@ class Plug1(EventHandler):
 
     def get_config_parameters(self):
         b = ConfigBuilder(self.title())
-        b.add_string("Name", help="Person's name")
+        b.add_string("User", description="Person's username name")
         b.add_string(
-            "BlockList", help="List of blocks, comma separated.  Must be lowercase"
+            "BlockList", description="List of blocks, comma separated.  Must be lowercase"
         )
         return b.config_parameters()
 
@@ -44,5 +60,6 @@ class Plug1(EventHandler):
         block = config["Block"]
         if block != block.lower():
             errors.append(("Block", "Block must be lower case"))
+
 
         return errors

@@ -1,4 +1,5 @@
 import logging
+import json
 import uuid
 from typing import Type
 from aioredis.commands import Redis
@@ -25,9 +26,9 @@ class EventHandler:
             config["tellify_id"] = str(uuid.uuid1())
         ev_id = config["tellify_id"]
         ev_name = type(self).__name__
-        config['tellify_EventHandler'] = ev_name
-        await redis.set("event_config_" + ev_id, self.config)
-        await redis.sadd("event_configs", ev_id)
+        config['tellify_EventHandlerClass'] = ev_name
+        await redis.set(ev_id, json.dumps(self.config))
+        await redis.sadd("event_handlers", ev_id)
 
     def required_fields(self) -> set:
         assert self
@@ -47,7 +48,7 @@ class ConfigBuilder:
         self.params = []
 
     def add_string(self, strname, description=None):
-        param = dict(name=strname, description=help)
+        param = dict(name=strname, description=description)
         self.params.append(param)
 
     def config_parameters(self):
@@ -62,11 +63,16 @@ class Tellify:
         self.redis = redis
         self._reset_configs()
 
+        # Key=EventHandlerClass name, value=class
+        self.event_handler_classes = dict()
+
     def _reset_configs(self):
-        # Key=EventHandler class name, value=class
+        """
+        These items should be reset whenever we reload our configs
+        @return:
+        """
+        # Key=uuid, value=EventHandler object
         self.event_handlers = dict()
-        # Key=uuid, value=EventHandler
-        self.event_configs = dict()
         # All possible parameters and fixed values across all EventHandlers
         self.all_params = set()
         # Which keys to convert to tuples in all_params
@@ -74,13 +80,13 @@ class Tellify:
         # key=event key, value=[list of EventHandlers to give this event to]
         self.ev_dispatch = dict()
 
-    def add_user_event_handler(self, event_handler: Type[EventHandler]):
+    def add_user_event_handler_class(self, event_handler_class: Type[EventHandler]):
         """
         Register the specified event handler with the system.
-        @type event_handler: EventHandler
+        @type event_handler_class: EventHandler
         """
-        ev_name = type(event_handler).__name__
-        self.event_handlers[ev_name] = event_handler
+        ev_name = event_handler_class.__name__
+        self.event_handler_classes[ev_name] = event_handler_class
 
     async def load_configs(self):
         """
@@ -89,28 +95,30 @@ class Tellify:
         # Clear everything out - see __init__ for docs
         redis = self.redis
         self._reset_configs()
-        ev_config_ids = await redis.smembers("event_configs")
+        ev_config_ids = await redis.smembers("event_handlers")
         recs = await redis.mget(ev_config_ids)
-        for ev_config in recs.items():
-            ev_class = ev_config['tellify_EventHandler']
+        for ev_config_json in recs:
+            ev_config = json.loads(ev_config_json)
+            ev_class = ev_config['tellify_EventHandlerClass']
             ev_id = ev_config['tellify_id']
 
             print("Loading:", ev_class, ev_id)
-            if ev_class not in self.event_handlers:
+            if ev_class not in self.event_handler_classes:
                 logging.error(f"No plugin found for EventHandler '{ev_class}'.")
                 continue
 
-            ev_handler = self.event_handlers[ev_class]
+            # Instantiate a new instance of the user EventHandler
+            ev_handler = self.event_handler_classes[ev_class]
             eh = ev_handler(ev_config)
             # Look at what parameters this EventHandler will be
             # looking for so we can optimize dispatch
-            rf = eh.required_fields()
             required = eh.required_fields()
-            matches = rf.match_fields()
+            matches = eh.match_fields()
             self.all_params.update(required)
             self.all_params.update(matches)
-            self.all_match_keys.add([ii[0] for ii in matches])
-            self.event_configs[ev_id] = eh
+            self.all_match_keys.update(required)
+            self.all_match_keys.update([ii[0] for ii in matches])
+            self.event_handlers[ev_id] = eh
 
     def send_event(self, event):
         """

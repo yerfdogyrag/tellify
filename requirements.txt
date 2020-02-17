@@ -7,7 +7,5 @@ jedi
 jupyter
 mockaioredis
 pytest
-pytest-asyncio
-pytest-redis
 python
 redis-py
