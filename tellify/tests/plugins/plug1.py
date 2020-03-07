@@ -1,10 +1,12 @@
-from tellify.tellify import EventHandler, ConfigBuilder
+from tellify.tellify import AlarmHandler, ConfigBuilder
 
 global Plug1_events
 # Key=plug name, value=[list of events matched]
 Plug1_events = dict()
+Plug1_alarms = []
 
-class Plug1(EventHandler):
+
+class Plug1(AlarmHandler):
     last_event: dict
 
     def event_handler(self, tellify, event: dict):
@@ -24,9 +26,17 @@ class Plug1(EventHandler):
                 if ev_val != v:
                     return False
 
+        # If there's a status of 'fail' in the event, store
+        # the items.
+        if event.get('status','') == 'fail':
+            self.store_alert(self.get_id(), event)
+
         Plug1_events.setdefault(name, []).append(event)
         assert tellify
         return True
+
+    def store_alert(selfself, event_handler_id, event):
+        Plug1_alarms.append((event_handler_id, event))
 
     def title(self):
         assert self
@@ -60,6 +70,5 @@ class Plug1(EventHandler):
         block = config["Block"]
         if block != block.lower():
             errors.append(("Block", "Block must be lower case"))
-
 
         return errors

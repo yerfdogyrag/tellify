@@ -13,6 +13,11 @@ class EventHandler:
     def __init__(self, config=None):
         self.config = config
 
+    def get_id(self):
+        if self.config is None:
+            return None
+        return self.config['tellify_id']
+
     async def set_config(self, config, redis: Redis):
         """
         Saves configuration off to redis.
@@ -40,6 +45,22 @@ class EventHandler:
         """
         assert self
         return set()
+
+
+class AlarmHandler(EventHandler):
+    """
+    AlarmHandlers are basically the same as EventHandlers but
+    they have some extra methods for aggregating events before
+    alerting.
+    """
+
+    def store_alert(self, event_handler_id, event):
+        """
+        @param event_handler_id: str
+        @param event: dict
+        @return:
+        """
+        pass
 
 
 class ConfigBuilder:

@@ -76,7 +76,7 @@ merge them together.
  
 
 
-![System Architecture](Diagram1.svg)
+![System Architecture](TellifySystem1.svg)
 
  
 

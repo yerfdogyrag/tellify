@@ -11,3 +11,4 @@
 - [ ] Write single test to start top-level from command-line, run tests,
   exit
 - [ ] Create top-level runner (load config, run EventManager)
+- [ ] Update system diagram
