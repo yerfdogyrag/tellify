@@ -56,21 +56,18 @@ To accomplish this, we need:
 
 ## Event Examples
 ### Periodic
-- Disk /sarc/cad is now at 93.5% (every 1/2 hour)
-- Host caddashboard is still alive (every minute)
-- Repo bitb0:pipriv/base branch:master hasn't been modified (shouldn't
-  really do this one).
+- Disk /eng/cad is now at 93.5% (every 1/2 hour)
+- Host mydashboard is still alive (every minute)
+- Code https://example.com/myproj/myrepo/blob/master/src/foo.c#1212 has expired deprecation
 
 ### Job specific
-- `project:vr0 block:gc_t route_opt user:gpupi runtag:myruntag completed status:good  tns:-50`
+- `project:vv0 block:cc route user:myuser runtag:myruntag completed status:good  tns:-50`
 
 ### Aggregated
 Aggregated events are "intelligent" handlers which take other events and
 merge them together.
 
-
-- When more than three blocks in project:vr0 fail with the same runtag, send event.
- 
+- When more than three blocks in project:vv0 fail with the same runtag, send event.
 
 ## System Architecture
  
@@ -214,6 +211,10 @@ https://guillotina.io/ngx-schema-form/dist/ngx-schema-form/json
  
 
 ## Misc
+
+### Other Tools
+
+* [Dispatch](https://github.com/Netflix/dispatch) was released right after I started working on this.  It seems to have many similar characteristics, but is missing the key reason for tellify: fine-grained user control.  I could easily see tellify being a front-end to Dispatch.
 
 ### Decisions to Make
 * Redis pub/sub or Redis Streams?
